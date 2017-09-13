@@ -7,6 +7,8 @@ var bodyParser = require('body-parser');
 var expressHbs = require('express-handlebars');
 var mongoose = require('mongoose');
 var session = require('express-session');
+var passport = require('passport');
+var flash = require('connect-flash');
 
 var index = require('./routes/index');
 // var users = require('./routes/users');
@@ -14,6 +16,7 @@ var index = require('./routes/index');
 var app = express();
 
 mongoose.connect('mongodb://test:test@ds133964.mlab.com:33964/shopping-cart');
+require('./config/passport');
 
 // view engine setup
 app.engine('.hbs', expressHbs({defaultLayout: 'layout', extname: '.hbs'}));
@@ -26,6 +29,9 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(session({secret: 'qazwsx1234', resave: false, saveUninitialized: false}));
+app.use(flash());
+app.use(passport.initialize());
+app.use(passport.session());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', index);
