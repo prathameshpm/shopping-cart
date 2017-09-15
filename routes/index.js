@@ -6,6 +6,7 @@ var Product = require('../models/product');
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
+  var successMsg = req.flash('success')[0];
   Product.find(function(err, docs) {
     var productChunks = [];
     var chunkSize = 3;
@@ -15,7 +16,9 @@ router.get('/', function(req, res, next) {
     }
     res.render('shop/index', {
       title: 'Shopping Cart',
-      products: productChunks
+      products: productChunks,
+      successMsg: successMsg,
+      noMessage: !successMsg
     });
   });
 });
@@ -37,10 +40,15 @@ router.get('/add-to-cart/:id', function(req, res, next) {
 
 router.get('/shopping-cart', function(req, res, next) {
   if (!req.session.cart) {
-    return res.render('shop/shopping-cart', {products: null});
+    return res.render('shop/shopping-cart', {
+      products: null
+    });
   }
-    var cart = new Cart(req.session.cart);
-    res.render('shop/shopping-cart', {products: cart.generateArray(), totalPrice: cart.totalPrice});
+  var cart = new Cart(req.session.cart);
+  res.render('shop/shopping-cart', {
+    products: cart.generateArray(),
+    totalPrice: cart.totalPrice
+  });
 });
 
 router.get('/checkout', function(req, res, next) {
@@ -48,7 +56,39 @@ router.get('/checkout', function(req, res, next) {
     return res.redirect('/shopping-cart');
   }
   var cart = new Cart(req.session.cart);
-  res.render('shop/checkout', {total: cart.totalPrice});
+  var errMsg = req.flash('error')[0];
+  res.render('shop/checkout', {
+    total: cart.totalPrice,
+    errMsg: errMsg,
+    noError: !errMsg
+  });
 });
+
+router.post('/checkout', function(req, res, next) {
+  if (!req.session.cart) {
+    return res.redirect('/shopping-cart');
+  }
+  var cart = new Cart(req.session.cart);
+  var stripe = require("stripe")(
+    "sk_test_9Gvj1iqUtOfOBC7RNlnLveXz"
+  );
+
+  stripe.charges.create({
+    amount: cart.totalPrice * 100,
+    currency: "usd",
+    source: req.body.stripeToken, // obtained with Stripe.js
+    description: "Test Charge"
+  }, function(err, charge) {
+    // asynchronously called
+    if (err) {
+      req.flash('error', err.message);
+      return req.redirect('/checkout');
+    }
+    req.flash('success', 'Successfully bought products.');
+    req.session.cart = null;
+    res.redirect('/');
+  });
+});
+
 
 module.exports = router;
